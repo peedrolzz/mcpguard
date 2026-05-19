@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: mcpguard
+        name: mcpguard — MCP security audit
+        entry: mcpguard scan --fail-on critical
+        language: python
+        additional_dependencies: ["mcpguard"]
+        files: '(\.mcp\.json|claude_desktop_config\.json|mcp_config\.json)$'
+        pass_filenames: true

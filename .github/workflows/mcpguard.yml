@@ -1,0 +1,70 @@
+name: mcpguard — MCP Security Audit
+
+on:
+  push:
+    paths:
+      - "**/.mcp.json"
+      - "**/claude_desktop_config.json"
+      - "**/.cursor/mcp.json"
+      - "**/.vscode/mcp.json"
+  pull_request:
+    paths:
+      - "**/.mcp.json"
+      - "**/claude_desktop_config.json"
+      - "**/.cursor/mcp.json"
+      - "**/.vscode/mcp.json"
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: Audit MCP configs
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write   # for uploading SARIF (optional)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install mcpguard
+        run: pip install mcpguard
+
+      - name: Discover MCP configs
+        run: mcpguard discover
+
+      - name: Scan (JSON report)
+        id: scan
+        run: |
+          mcpguard scan --json --all > mcpguard-report.json || true
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Scan (terminal output)
+        run: mcpguard scan --fail-on high --all
+        continue-on-error: false
+
+      - name: Upload JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcpguard-report
+          path: mcpguard-report.json
+          retention-days: 30
+
+      - name: Generate HTML report
+        if: always()
+        run: mcpguard scan --format html --output mcpguard-report.html --all || true
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcpguard-report-html
+          path: mcpguard-report.html
+          retention-days: 30
